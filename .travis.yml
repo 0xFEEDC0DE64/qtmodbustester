@@ -1,0 +1,28 @@
+language: cpp
+os: linux
+dist: bionic
+compiler:
+  - gcc
+  - clang
+
+cache:
+  directories:
+    - ~/.ccache
+    - qt5
+
+install:
+  - mkdir -p qt5
+  - if [ ! -d qt5/.git ] ; then rm qt5 -Rf ; git clone --branch=5.15 git://code.qt.io/qt/qt5.git ; fi
+  - pushd qt5
+  - if [ ! -d qtbase/.git ] ; then perl init-repository --module-subset=qtbase,qtcharts,qtserialbus ; fi
+  - if [ ! -f config.summary ] ; then ./configure -prefix `pwd`/build -opensource -confirm-license -no-opengl -nomake examples -nomake tests ; fi
+  - if [ ! -d build ] ; then make -j2 > /dev/null && make install ; fi
+  - popd
+  - ccache -s
+
+script:
+  - mkdir -p build
+  - pushd build
+  - ../qt5/build/bin/qmake CONFIG+=ccache .. -config release
+  - make -j2
+  - popd
