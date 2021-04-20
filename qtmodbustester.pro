@@ -1,6 +1,6 @@
 QT = core network serialbus gui widgets
 
-CONFIG += c++latest
+CONFIG += c++17
 
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000
 
