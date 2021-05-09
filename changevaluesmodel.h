@@ -22,6 +22,8 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const override;
     bool setData(const QModelIndex &index, const QVariant &value, int role) override;
 
+    QVector<quint16> values() const;
+
 public slots:
     void setFirstRegister(uint16_t firstRegister);
     void setCount(uint16_t count);

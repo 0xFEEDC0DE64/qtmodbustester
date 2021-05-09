@@ -154,13 +154,19 @@ void MainWindow::requestPressed()
         m_model->setResult({});
         QMessageBox::warning(this,
                              tr("Request sending failed!"),
-                             tr("Request sending failed:\n\n%s").arg(m_modbus->errorString()));
+                             tr("Request sending failed:\n\n%0").arg(m_modbus->errorString()));
     }
 }
 
 void MainWindow::writePressed()
 {
-    ChangeValuesDialog dialog{*m_modbus, this};
+    QModbusDataUnit::RegisterType registerType{QModbusDataUnit::RegisterType::Invalid};
+
+    if (const auto registerTypeData = m_ui->comboBoxType->currentData();
+        registerTypeData.isValid() && registerTypeData.canConvert<QModbusDataUnit::RegisterType>())
+        registerType = registerTypeData.value<QModbusDataUnit::RegisterType>();
+
+    ChangeValuesDialog dialog{*m_modbus, m_ui->spinBoxSlave->value(), registerType, this};
     dialog.exec();
     qDebug() << "called";
 }
@@ -268,9 +274,9 @@ void MainWindow::replyFinished()
         m_ui->labelRequestStatus->setText(tr("Failed!"));
 
         const auto msg = tr("Request failed with %0: %1 (took %2ms)")
-                .arg(error)
-                .arg(m_reply->errorString())
-                .arg(elapsed);
+                             .arg(error)
+                             .arg(m_reply->errorString())
+                             .arg(elapsed);
 
         statusBar()->showMessage(msg, 5000);
 

@@ -115,6 +115,11 @@ bool ChangeValuesModel::setData(const QModelIndex &index, const QVariant &value,
     return false;
 }
 
+QVector<quint16> ChangeValuesModel::values() const
+{
+    return m_registers.mid(m_firstRegister, m_count);
+}
+
 void ChangeValuesModel::setFirstRegister(uint16_t firstRegister)
 {
     beginResetModel();
