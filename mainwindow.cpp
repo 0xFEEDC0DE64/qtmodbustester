@@ -12,6 +12,7 @@
 
 // local includes
 #include "modbustablemodel.h"
+#include "changevaluesdialog.h"
 
 // utilities
 namespace {
@@ -60,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(m_ui->pushButtonConnect, &QAbstractButton::pressed, this, &MainWindow::connectPressed);
     connect(m_ui->pushButtonRequest, &QAbstractButton::pressed, this, &MainWindow::requestPressed);
+    connect(m_ui->pushButtonWrite,   &QAbstractButton::pressed, this, &MainWindow::writePressed);
 
     m_ui->tableView->setModel(m_model.get());
 }
@@ -154,6 +156,13 @@ void MainWindow::requestPressed()
                              tr("Request sending failed!"),
                              tr("Request sending failed:\n\n%s").arg(m_modbus->errorString()));
     }
+}
+
+void MainWindow::writePressed()
+{
+    ChangeValuesDialog dialog{*m_modbus, this};
+    dialog.exec();
+    qDebug() << "called";
 }
 
 void MainWindow::modbusErrorOccured(int error)

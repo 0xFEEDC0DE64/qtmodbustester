@@ -25,6 +25,7 @@ QModelIndex ModbusTableModel::index(int row, int column, const QModelIndex &pare
 
 QModelIndex ModbusTableModel::parent(const QModelIndex &child) const
 {
+    Q_UNUSED(child)
     return {};
 }
 

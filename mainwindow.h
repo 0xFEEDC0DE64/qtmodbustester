@@ -24,6 +24,7 @@ public:
 private slots:
     void connectPressed();
     void requestPressed();
+    void writePressed();
 
     void modbusErrorOccured(int error);
     void modbusStateChanged(int state);

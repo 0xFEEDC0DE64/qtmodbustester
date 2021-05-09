@@ -37,7 +37,7 @@
       <item>
        <widget class="QLineEdit" name="lineEditServer">
         <property name="text">
-         <string>192.168.0.75</string>
+         <string>192.168.8.116</string>
         </property>
        </widget>
       </item>
@@ -276,6 +276,26 @@
       </item>
       <item>
        <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButtonWrite">
+        <property name="text">
+         <string>Write values</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_4">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
