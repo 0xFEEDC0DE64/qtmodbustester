@@ -6,3 +6,14 @@ Simple Qt modbus tester
 Currently only supports modbus-tcp and only reading registers (no writing yet)
 
 ![Screenshot](/screenshot.png)
+
+## Build and Run
+```
+git clone git@github.com:0xFEEDC0DE64/qtmodbustester.git
+cd qtmodbustester
+mkdir build
+cd build
+qmake ..
+make
+./qtmodbustester
+```
