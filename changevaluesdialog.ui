@@ -32,7 +32,7 @@
      <item row="2" column="0">
       <widget class="QLabel" name="labelFirstRegister">
        <property name="text">
-        <string>First reister:</string>
+        <string>First register:</string>
        </property>
        <property name="buddy">
         <cstring>spinBoxFirstRegister</cstring>
@@ -42,7 +42,7 @@
      <item row="2" column="1">
       <widget class="QSpinBox" name="spinBoxFirstRegister">
        <property name="maximum">
-        <number>9999</number>
+        <number>65535</number>
        </property>
       </widget>
      </item>
@@ -59,7 +59,7 @@
      <item row="3" column="1">
       <widget class="QSpinBox" name="spinBoxCount">
        <property name="maximum">
-        <number>9999</number>
+        <number>65535</number>
        </property>
       </widget>
      </item>

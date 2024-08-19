@@ -6,6 +6,7 @@ enum {
     ColumnHex,
     ColumnBinary,
     ColumnAscii,
+    ColumnFloat32,
     ColumnCount
 };
 }
@@ -54,6 +55,17 @@ QVariant ModbusTableModel::data(const QModelIndex &index, int role) const
     Q_ASSERT(index.row() < values.size());
 
     const auto &value = values[index.row()];
+    const bool hasNext = index.row() < values.size()-1;
+
+    union {
+        float valueAsFloat32;
+        quint16 arr [2];
+    };
+    if(hasNext){
+        arr[1]=value;
+        arr[0]=values[index.row()+1];
+    }
+
 
     switch (role)
     {
@@ -64,6 +76,7 @@ QVariant ModbusTableModel::data(const QModelIndex &index, int role) const
         case ColumnHex:     return QString::number(value, 16).rightJustified(4, '0').insert(2, ' ');
         case ColumnBinary:  return QString::number(value, 2) .rightJustified(16, '0').insert(8, ' ');
         case ColumnAscii:   return QString{QChar{(value&0xFF00)>>8}} + QChar{value&0x00FF};
+        case ColumnFloat32: return hasNext ? QString::number(valueAsFloat32,'f'): "";
         }
         __builtin_unreachable();
         break;
@@ -74,6 +87,7 @@ QVariant ModbusTableModel::data(const QModelIndex &index, int role) const
         case ColumnHex:
         case ColumnBinary:
         case ColumnAscii:
+        case ColumnFloat32:
             return value;
         }
         __builtin_unreachable();
@@ -101,6 +115,7 @@ QVariant ModbusTableModel::headerData(int section, Qt::Orientation orientation, 
             case ColumnHex:     return tr("Hex");
             case ColumnBinary:  return tr("Binary");
             case ColumnAscii:   return tr("Ascii");
+            case ColumnFloat32: return tr("Float32");
             }
             __builtin_unreachable();
             break;
