@@ -6,10 +6,10 @@
 
 // Qt includes
 #include <QDebug>
-#include <QModbusTcpClient>
+#include <QModbusClient>
 #include <QMessageBox>
 
-ChangeValuesDialog::ChangeValuesDialog(QModbusTcpClient &modbus, int serverAddress, QModbusDataUnit::RegisterType registerType, QWidget *parent) :
+ChangeValuesDialog::ChangeValuesDialog(QModbusClient &modbus, int serverAddress, QModbusDataUnit::RegisterType registerType, QWidget *parent) :
     QDialog{parent},
     m_ui{std::make_unique<Ui::ChangeValuesDialog>()},
     m_modbus{modbus}

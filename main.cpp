@@ -7,8 +7,6 @@
 
 int main(int argc, char *argv[])
 {
-    QApplication app{argc, argv};
-
     qSetMessagePattern(QStringLiteral("%{time dd.MM.yyyy HH:mm:ss.zzz} "
                                       "["
                                       "%{if-debug}D%{endif}"
@@ -24,6 +22,8 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName(QStringLiteral("feedc0de enterprises"));
     QCoreApplication::setApplicationName(QStringLiteral("qmodbustester"));
     QCoreApplication::setApplicationVersion(QStringLiteral("1.0"));
+
+    QApplication app{argc, argv};
 
     MainWindow mainWindow;
     mainWindow.show();

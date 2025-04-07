@@ -11,7 +11,7 @@
 #include "changevaluesmodel.h"
 
 // forward declares
-class QModbusTcpClient;
+class QModbusClient;
 class QModbusReply;
 namespace Ui {class ChangeValuesDialog; }
 
@@ -20,7 +20,7 @@ class ChangeValuesDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit ChangeValuesDialog(QModbusTcpClient &modbus, int serverAddress, QModbusDataUnit::RegisterType registerType, QWidget *parent = nullptr);
+    explicit ChangeValuesDialog(QModbusClient &modbus, int serverAddress, QModbusDataUnit::RegisterType registerType, QWidget *parent = nullptr);
     ~ChangeValuesDialog() override;
 
 private slots:
@@ -29,7 +29,7 @@ private slots:
 
 private:
     const std::unique_ptr<Ui::ChangeValuesDialog> m_ui;
-    QModbusTcpClient &m_modbus;
+    QModbusClient &m_modbus;
     ChangeValuesModel m_model;
     std::unique_ptr<QModbusReply> m_reply;
 };

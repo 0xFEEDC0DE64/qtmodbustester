@@ -6,9 +6,14 @@
 // Qt includes
 #include <QMainWindow>
 #include <QElapsedTimer>
+#include <QStringListModel>
+#include <QSettings>
+#include <QCompleter>
+#include <QSettings>
+#include <qmodbusdevice.h>
 
 // forward declares
-class QModbusTcpClient;
+class QModbusClient;
 class QModbusReply;
 namespace Ui { class MainWindow; }
 class ModbusTableModel;
@@ -22,6 +27,8 @@ public:
     ~MainWindow() override;
 
 private slots:
+    void refreshSerialPorts();
+
     void connectPressed();
     void requestPressed();
     void writePressed();
@@ -30,13 +37,18 @@ private slots:
     void modbusStateChanged(int state);
 
     void replyFinished();
+    void replyErrorOccurred(QModbusDevice::Error error);
+    void replyIntermediateErrorOccurred(QModbusDevice::IntermediateError error);
 
 private:
     void updateRequestFields();
 
     const std::unique_ptr<Ui::MainWindow> m_ui;
-    const std::unique_ptr<QModbusTcpClient> m_modbus;
+    QSettings m_settings;
+    std::unique_ptr<QModbusClient> m_modbus;
     const std::unique_ptr<ModbusTableModel> m_model;
     std::unique_ptr<QModbusReply> m_reply;
     QElapsedTimer m_timer;
+    QStringListModel m_completerModel;
+    QCompleter m_completer;
 };

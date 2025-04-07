@@ -3,7 +3,10 @@
 
 // Qt includes
 #include <QDebug>
+#include <QSerialPort>
+#include <QSerialPortInfo>
 #include <QModbusTcpClient>
+#include <QtSerialBus/QModbusRtuSerialMaster>
 #include <QModbusReply>
 #include <QMetaEnum>
 #include <QMessageBox>
@@ -23,26 +26,13 @@ QString toString(QModbusDataUnit::RegisterType registerType);
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow{parent},
     m_ui{std::make_unique<Ui::MainWindow>()},
-    m_modbus{std::make_unique<QModbusTcpClient>(this)},
-    m_model{std::make_unique<ModbusTableModel>(this)}
+    m_model{std::make_unique<ModbusTableModel>(this)},
+    m_completerModel{this},
+    m_completer{&m_completerModel, this}
 {
     m_ui->setupUi(this);
 
-    m_ui->spinBoxTimeout->setValue(m_modbus->timeout());
-    connect(m_modbus.get(), &QModbusClient::timeoutChanged, m_ui->spinBoxTimeout, &QSpinBox::setValue);
-    connect(m_ui->spinBoxTimeout, &QSpinBox::valueChanged, m_modbus.get(), &QModbusClient::setTimeout);
-
-    m_ui->spinBoxRetries->setValue(m_modbus->numberOfRetries());
-    //connect(m_modbus.get(), &QModbusClient::numberOfRetriesChanged, m_ui->spinBoxRetries, &QSpinBox::setValue);
-    connect(m_ui->spinBoxRetries, &QSpinBox::valueChanged, m_modbus.get(), &QModbusClient::setNumberOfRetries);
-
-    modbusStateChanged(m_modbus->state());
-
-    connect(m_modbus.get(), &QModbusClient::errorOccurred,
-                      this, &MainWindow::modbusErrorOccured);
-
-    connect(m_modbus.get(), &QModbusClient::stateChanged,
-                      this, &MainWindow::modbusStateChanged);
+    qDebug() << m_settings.fileName();
 
     {
         const auto addItem = [&](const auto &text, const auto &value){
@@ -63,10 +53,43 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_ui->pushButtonRequest, &QAbstractButton::pressed, this, &MainWindow::requestPressed);
     connect(m_ui->pushButtonWrite,   &QAbstractButton::pressed, this, &MainWindow::writePressed);
 
+    auto completions = m_settings.value("lastHosts").toStringList();
+    m_completerModel.setStringList(completions);
+
+    m_completer.setModel(&m_completerModel);
+    m_completer.setCaseSensitivity(Qt::CaseInsensitive);
+    m_ui->lineEditServer->setCompleter(&m_completer);
+
+    if (!completions.isEmpty())
+        m_ui->lineEditServer->setText(completions.first());
+
     m_ui->tableView->setModel(m_model.get());
+
+    refreshSerialPorts();
+
+    connect(m_ui->toolButtonRefreshSerialports, &QToolButton::pressed, this, &MainWindow::refreshSerialPorts);
+
+    {
+        QMetaEnum e = QMetaEnum::fromType<QSerialPort::Parity>();
+        for (int i = 0; i < e.keyCount(); i++)
+            m_ui->comboBoxParity->addItem(e.key(i), QSerialPort::Parity(e.value(i)));
+    }
+
+    {
+        QMetaEnum e = QMetaEnum::fromType<QSerialPort::StopBits>();
+        for (int i = 0; i < e.keyCount(); i++)
+            m_ui->comboBoxStopBits->addItem(e.key(i), QSerialPort::StopBits(e.value(i)));
+    }
 }
 
 MainWindow::~MainWindow() = default;
+
+void MainWindow::refreshSerialPorts()
+{
+    m_ui->comboBoxSerialPort->clear();
+    for (const auto &port : QSerialPortInfo::availablePorts())
+        m_ui->comboBoxSerialPort->addItem(port.portName() + " [" + port.manufacturer() + "; " + port.serialNumber() + "]", port.portName());
+}
 
 void MainWindow::connectPressed()
 {
@@ -78,30 +101,70 @@ void MainWindow::connectPressed()
         return;
     }
 
-    switch (const auto state = m_modbus->state())
+    switch (!m_modbus || m_modbus->state() != QModbusDevice::ConnectedState)
     {
-    case QModbusDevice::ConnectedState:
+    case false:
         m_modbus->disconnectDevice();
+        m_modbus.release()->deleteLater();
         break;
-    case QModbusDevice::UnconnectedState:
-        m_modbus->setConnectionParameter(QModbusDevice::NetworkAddressParameter, m_ui->lineEditServer->text());
-        m_modbus->setConnectionParameter(QModbusDevice::NetworkPortParameter, m_ui->spinBoxPort->value());
+
+    case true :
+        switch (m_ui->comboBoxConnectionType->currentIndex())
+        {
+        case 0: // tcp
+            m_modbus = std::make_unique<QModbusTcpClient>(this);
+            m_modbus->setConnectionParameter(QModbusDevice::NetworkAddressParameter, m_ui->lineEditServer->text());
+            m_modbus->setConnectionParameter(QModbusDevice::NetworkPortParameter, m_ui->spinBoxPort->value());
+            break;
+        case 1: // rtu
+            m_modbus = std::make_unique<QModbusRtuSerialMaster>(this);
+            m_modbus->setConnectionParameter(QModbusDevice::SerialPortNameParameter, m_ui->comboBoxSerialPort->currentData().toString());
+            m_modbus->setConnectionParameter(QModbusDevice::SerialParityParameter, m_ui->comboBoxParity->currentData().value<QSerialPort::Parity>());
+            m_modbus->setConnectionParameter(QModbusDevice::SerialBaudRateParameter, QSerialPort::Baud9600);
+            m_modbus->setConnectionParameter(QModbusDevice::SerialStopBitsParameter, m_ui->comboBoxStopBits->currentData().value<QSerialPort::StopBits>());
+            break;
+        default:
+            QMessageBox::warning(this, tr("Invalid connection type"), tr("Invalid connection type"));
+            return;
+        }
+
+        m_modbus->setTimeout(m_ui->spinBoxTimeout->value());
+        connect(m_modbus.get(), &QModbusClient::timeoutChanged, m_ui->spinBoxTimeout, &QSpinBox::setValue);
+        connect(m_ui->spinBoxTimeout, &QSpinBox::valueChanged, m_modbus.get(), &QModbusClient::setTimeout);
+
+        m_modbus->setNumberOfRetries(m_ui->spinBoxRetries->value());
+        //connect(m_modbus.get(), &QModbusClient::numberOfRetriesChanged, m_ui->spinBoxRetries, &QSpinBox::setValue);
+        connect(m_ui->spinBoxRetries, &QSpinBox::valueChanged, m_modbus.get(), &QModbusClient::setNumberOfRetries);
+
+        modbusStateChanged(m_modbus->state());
+
+        connect(m_modbus.get(), &QModbusClient::errorOccurred,
+                this, &MainWindow::modbusErrorOccured);
+
+        connect(m_modbus.get(), &QModbusClient::stateChanged,
+                this, &MainWindow::modbusStateChanged);
+
+
         if (!m_modbus->connectDevice())
         {
-
+            QMessageBox::warning(this,
+                                 tr("Modbus client could not connect"),
+                                 tr("Modbus client could not connect:\n\n%0")
+                                    .arg(m_modbus->errorString())
+                                 );
         }
         break;
-    default:
-        QMessageBox::warning(this,
-                             tr("Modbus client is in wrong state"),
-                             tr("Modbus client is in wrong state:\n\n%0")
-                                .arg(QMetaEnum::fromType<QModbusDevice::State>().valueToKey(state))
-                             );
     }
 }
 
 void MainWindow::requestPressed()
 {
+    if (!m_modbus)
+    {
+        QMessageBox::warning(this, tr("No valid serial port openend"), tr("No valid serial port openend"));
+        return;
+    }
+
     if (const auto state = m_modbus->state(); state != QModbusDevice::ConnectedState)
     {
         QMessageBox::warning(this,
@@ -134,7 +197,7 @@ void MainWindow::requestPressed()
 
     QModbusDataUnit dataUnit(registerType.value<QModbusDataUnit::RegisterType>(), m_ui->spinBoxRegister->value(), m_ui->spinBoxCount->value());
     qDebug() << m_ui->spinBoxSlave->value() << dataUnit.registerType() << dataUnit.startAddress() << dataUnit.valueCount();
-    if (m_reply = std::unique_ptr<QModbusReply>(m_modbus->sendReadRequest(std::move(dataUnit), m_ui->spinBoxSlave->value())))
+    if (m_reply = std::unique_ptr<QModbusReply>{m_modbus->sendReadRequest(std::move(dataUnit), m_ui->spinBoxSlave->value())})
     {
         updateRequestFields();
 
@@ -146,6 +209,8 @@ void MainWindow::requestPressed()
             if (!m_ui->checkBoxAutorefresh->isChecked())
                 m_model->setResult({});
             connect(m_reply.get(), &QModbusReply::finished, this, &MainWindow::replyFinished);
+            connect(m_reply.get(), &QModbusReply::errorOccurred, this, &MainWindow::replyErrorOccurred);
+            connect(m_reply.get(), &QModbusReply::intermediateErrorOccurred, this, &MainWindow::replyIntermediateErrorOccurred);
         }
     }
     else
@@ -189,7 +254,15 @@ void MainWindow::modbusStateChanged(int state)
     m_ui->labelConnectionStatus->setText(QMetaEnum::fromType<QModbusDevice::State>().valueToKey(state));
 
     if (state == QModbusDevice::ConnectedState)
+    {
+        auto completions = m_settings.value("lastHosts").toStringList();
+        completions.removeAll(m_ui->lineEditServer->text());
+        completions.prepend(m_ui->lineEditServer->text());
+        m_settings.setValue("lastHosts", completions);
+        m_completerModel.setStringList(completions);
+
         m_ui->pushButtonConnect->setText(tr("Disconnect"));
+    }
     else if (state == QModbusDevice::UnconnectedState)
     {
         m_ui->pushButtonConnect->setText(tr("Connect"));
@@ -238,7 +311,7 @@ void MainWindow::replyFinished()
         }
         else
         {
-            qWarning() << "result is invalid!";
+            qWarning() << "result is invalid!" << m_reply->error() << m_reply->errorString();
 
             m_model->setResult({});
 
@@ -288,6 +361,16 @@ void MainWindow::replyFinished()
 
     m_reply = nullptr;
     updateRequestFields();
+}
+
+void MainWindow::replyErrorOccurred(QModbusDevice::Error error)
+{
+    qDebug() << error;
+}
+
+void MainWindow::replyIntermediateErrorOccurred(QModbusDevice::IntermediateError error)
+{
+    qDebug() << error;
 }
 
 void MainWindow::updateRequestFields()
